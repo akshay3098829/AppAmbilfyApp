@@ -9,7 +9,7 @@ import {
   TextField,
   View,
   withAuthenticator,
-  // Image,
+  Image,
 } from "@aws-amplify/ui-react";
 import { listTodos } from "./graphql/queries";
 import {
@@ -17,58 +17,74 @@ import {
   deleteTodo as deleteNoteMutation,
 } from "./graphql/mutations";
 import { generateClient } from "aws-amplify/api";
- 
+// import { Storage } from "@aws-amplify";
+import { remove } from 'aws-amplify/storage';
+import { uploadData, getUrl } from "aws-amplify/storage"
+// import { IconUpload } from "@aws-amplify/ui-react/dist/types/primitives/Icon";
+
+
 const client = generateClient();
 const App = ({ signOut }) => {
   const [notes, setNotes] = useState([]);
- 
+
   useEffect(() => {
     fetchNotes();
   }, []);
- 
+
   async function fetchNotes() {
+    console.log("fetching................")
     const apiData = await client.graphql({ query: listTodos });
     const notesFromAPI = apiData.data.listTodos.items;
-    // await Promise.all(
-    //   notesFromAPI.map(async (note) => {
-    //     if (note.image) {
-    //       const url = await Storage.get(note.name);
-    //       note.image = url;
-    //     }
-    //     return note;
-    //   })
-    // );
+    await Promise.all(
+      notesFromAPI.map(async (note) => {
+        console.log("note", note)
+        if (note.image) {
+          const url = await getUrl({
+            key: note.image, options: { expiresIn: 3600 }
+          });
+          console.log("url", url.url)
+          note.url = url.url;
+        }
+        // console.log(note)
+        return note;
+      })
+    );
+
     setNotes(notesFromAPI);
   }
- 
+
   async function createNote(event) {
     event.preventDefault();
     const form = new FormData(event.target);
-    // const image = form.get("image");
+    const image = form.get("image");
     const data = {
       name: form.get("name"),
       description: form.get("description"),
-      // image: image.name,
+      image: image.name,
     };
-    // if (!!data.image) await Storage.put(data.name, image);
+    console.log("input name :", data.name)
+    if (!!data.image) await uploadData({ key: data.image, data: image });
+    console.log(image.name, "uploaded1111111111111")
     await client.graphql({
       query: createNoteMutation,
       variables: { input: data },
     });
+
     fetchNotes();
     event.target.reset();
   }
- 
+
   async function deleteNote({ id, name }) {
     const newNotes = notes.filter((note) => note.id !== id);
     setNotes(newNotes);
-    // await Storage.remove(name);
+    console.log("2222222222222",newNotes)
+    await remove({ key: notes });
     await client.graphql({
       query: deleteNoteMutation,
       variables: { input: { id } },
     });
   }
- 
+
   return (
     <View className="App">
       <Heading level={1}>My Notes App</Heading>
@@ -90,12 +106,12 @@ const App = ({ signOut }) => {
             variation="quiet"
             required
           />
-          {/* <View
+          <View
             name="image"
             as="input"
             type="file"
             style={{ alignSelf: "end" }}
-          /> */}
+          />
           <Button type="submit" variation="primary">
             Create Note
           </Button>
@@ -114,13 +130,13 @@ const App = ({ signOut }) => {
               {note.name}
             </Text>
             <Text as="span">{note.description}</Text>
-            {/* {note.image && (
+            {note.image && (
               <Image
-                src={note.image}
-                alt={`visual aid for ${note.name}`}
+                src={note.url}
+                alt={`${note.name}`}
                 style={{ width: 400 }}
               />
-            )} */}
+            )}
             <Button variation="link" onClick={() => deleteNote(note)}>
               Delete note
             </Button>
@@ -131,5 +147,5 @@ const App = ({ signOut }) => {
     </View>
   );
 };
- 
+
 export default withAuthenticator(App);
