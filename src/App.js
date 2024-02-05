@@ -74,11 +74,15 @@ const App = ({ signOut }) => {
     event.target.reset();
   }
 
-  async function deleteNote({ id, name }) {
+  async function deleteNote({ id }) {
+    const image_list =notes.filter((note) => note.id === id)
+    const image_value=image_list[0].image
+    console.log("444444444",image_value)
     const newNotes = notes.filter((note) => note.id !== id);
     setNotes(newNotes);
     console.log("2222222222222",newNotes)
-    await remove({ key: notes });
+    console.log("3333333",notes)
+    await remove({ key: image_value});
     await client.graphql({
       query: deleteNoteMutation,
       variables: { input: { id } },
@@ -118,7 +122,7 @@ const App = ({ signOut }) => {
         </Flex>
       </View>
       <Heading level={2}>Current Notes</Heading>
-      <View margin="3rem 0">
+      <View margin="3rem 0" >
         {notes.map((note) => (
           <Flex
             key={note.id || note.name}
@@ -129,7 +133,7 @@ const App = ({ signOut }) => {
             <Text as="strong" fontWeight={700}>
               {note.name}
             </Text>
-            <Text as="span">{note.description}</Text>
+            <Text as="strong">{note.description}</Text>
             {note.image && (
               <Image
                 src={note.url}
